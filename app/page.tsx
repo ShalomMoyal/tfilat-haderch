@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { AuthMenu } from '@/components/auth-menu'
 import { MapMinyanPicker } from '@/components/map-minyan-picker'
 import { getActiveMinyanim } from '@/app/actions/minyan'
 import {
@@ -97,13 +98,13 @@ export default function Home() {
             <button className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[13px] font-medium text-[#5e737e] hover:bg-[#eaf0ec]" type="button">
               EN <ChevronDown size={14} />
             </button>
-            <a href="/login" className="rounded-full border border-[#b9c7c5] px-5 py-2.5 text-[13px] font-semibold text-[#183f52] transition hover:border-[#183f52] hover:bg-white">Log in</a>
+            <AuthMenu />
           </div>
           <button className="grid size-10 place-items-center rounded-full border border-[#b9c7c5] text-[#183f52] md:hidden" onClick={() => setMenuOpen((open) => !open)} aria-label={menuOpen ? 'Close menu' : 'Open menu'}>
             {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
-        {menuOpen && <nav className="flex flex-col gap-4 border-t border-[#dfe5e0] py-5 text-sm font-medium lg:hidden" aria-label="Mobile navigation"><a href="#minyanim">Minyanim</a><a href="/places">Synagogues & Chabad</a><a href="/kosher">Kosher products</a><a href="/trips">Trips</a><a href="/login" className="w-fit rounded-full bg-[#183f52] px-5 py-2.5 text-white">Log in</a></nav>}
+        {menuOpen && <nav className="flex flex-col gap-4 border-t border-[#dfe5e0] py-5 text-sm font-medium lg:hidden" aria-label="Mobile navigation"><a href="#minyanim">Minyanim</a><a href="/places">Synagogues & Chabad</a><a href="/kosher">Kosher products</a><a href="/trips">Trips</a><AuthMenu compact /></nav>}
       </header>
 
       <section id="home" className="px-5 pb-14 pt-14 md:px-10 md:pb-20 md:pt-20">
