@@ -21,6 +21,13 @@ enum ContentStatus {
   EXPIRED
 }
 
+enum TripStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  INACTIVE
+}
+
 enum MinyanType {
   ONE_TIME
   RECURRING
@@ -40,29 +47,69 @@ enum LocationType {
   BOTH
 }
 
+enum RecommendationType {
+  ATTRACTION
+  RESTAURANT
+  NATURE
+  SHOPPING
+  CHILDREN
+  JEWISH
+  OTHER
+}
+
+enum AccommodationType {
+  HOTEL
+  HOSTEL
+  APARTMENT
+  GUESTHOUSE
+  OTHER
+}
+
+enum ReportEntityType {
+  MINYAN
+  JEWISH_LOCATION
+  KOSHER_PRODUCT
+  TRIP
+  TRIP_RECOMMENDATION
+  ACCOMMODATION
+  USER
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  RESOLVED
+  REJECTED
+}
+
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  passwordHash  String?
-  image         String?
-  phone         String?
-  role          Role      @default(USER)
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  accounts      Account[]
-  sessions      Session[]
-  minyanim      Minyan[]
-  participants  MinyanParticipant[]
-  locations     JewishLocation[]
-  products      KosherProduct[]
-  guideProfile  GuideProfile?
+  id                     String                @id @default(cuid())
+  name                   String?
+  email                  String?               @unique
+  emailVerified          DateTime?
+  passwordHash           String?
+  image                  String?
+  imageUrl               String?
+  phone                  String?
+  role                   Role                  @default(USER)
+  isActive               Boolean               @default(true)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  accounts               Account[]
+  sessions               Session[]
+  createdMinyanim        Minyan[]
+  minyanParticipants     MinyanParticipant[]
+  createdLocations       JewishLocation[]
+  createdProducts        KosherProduct[]
+  guideProfile           GuideProfile?
+  createdAccommodations  Accommodation[]       @relation("AccommodationCreatedBy")
+  reports                Report[]              @relation("ReportReporter")
+  resolvedReports        Report[]              @relation("ReportResolver")
+  auditLogs              AuditLog[]
 }
 
 model Account {
-  id                String @id @default(cuid())
+  id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
@@ -74,7 +121,8 @@ model Account {
   scope             String?
   id_token          String? @db.Text
   session_state     String?
-  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerAccountId])
 }
 
@@ -90,70 +138,80 @@ model VerificationToken {
   identifier String
   token      String   @unique
   expires    DateTime
+
   @@unique([identifier, token])
 }
 
 model Country {
-  id     String @id @default(cuid())
-  name   String
-  code   String @unique
-  cities City[]
+  id       String          @id @default(cuid())
+  name     String
+  code     String          @unique
+  cities   City[]
   minyanim Minyan[]
   locations JewishLocation[]
   products KosherProduct[]
+  trips    Trip[]
+
+  @@index([name])
 }
 
 model City {
-  id        String @id @default(cuid())
+  id        String          @id @default(cuid())
   name      String
   countryId String
-  country   Country @relation(fields: [countryId], references: [id])
-  minyanim Minyan[]
+  country   Country         @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  minyanim  Minyan[]
   locations JewishLocation[]
-  products KosherProduct[]
+  products  KosherProduct[]
+  trips     Trip[]
+
   @@unique([countryId, name])
+  @@index([countryId, name])
 }
 
 model Minyan {
-  id              String @id @default(cuid())
-  title           String
-  prayerType      PrayerType
-  type            MinyanType
-  startDateTime   DateTime
-  expiresAt       DateTime
-  recurrenceRule  String?
-  time            String?
-  countryId       String?
-  cityId          String?
-  address         String?
-  latitude        Float?
-  longitude       Float?
-  description     String?
-  contactName     String?
-  contactPhone    String?
-  createdById     String
-  status          ContentStatus @default(PENDING)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  createdBy       User @relation(fields: [createdById], references: [id])
-  country         Country? @relation(fields: [countryId], references: [id])
-  city            City? @relation(fields: [cityId], references: [id])
-  participants    MinyanParticipant[]
+  id             String          @id @default(cuid())
+  title          String
+  prayerType     PrayerType
+  type           MinyanType
+  startDateTime  DateTime
+  expiresAt      DateTime
+  recurrenceRule String?
+  time           String?
+  countryId      String?
+  cityId         String?
+  address        String?
+  latitude       Float?
+  longitude      Float?
+  description    String?
+  contactName    String?
+  contactPhone   String?
+  createdById    String
+  status         ContentStatus   @default(ACTIVE)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  createdBy      User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  country        Country?        @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  city           City?           @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  participants   MinyanParticipant[]
+
   @@index([status, expiresAt])
+  @@index([countryId, cityId])
 }
 
 model MinyanParticipant {
-  id        String @id @default(cuid())
+  id        String   @id @default(cuid())
   minyanId  String
   userId    String
   createdAt DateTime @default(now())
-  minyan    Minyan @relation(fields: [minyanId], references: [id], onDelete: Cascade)
-  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  minyan    Minyan   @relation(fields: [minyanId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([minyanId, userId])
 }
 
 model JewishLocation {
-  id          String @id @default(cuid())
+  id          String        @id @default(cuid())
   name        String
   type        LocationType
   countryId   String?
@@ -168,15 +226,17 @@ model JewishLocation {
   imageUrl    String?
   createdById String
   status      ContentStatus @default(PENDING)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdBy   User @relation(fields: [createdById], references: [id])
-  country     Country? @relation(fields: [countryId], references: [id])
-  city        City? @relation(fields: [cityId], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  createdBy   User          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  country     Country?      @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  city        City?         @relation(fields: [cityId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
 }
 
 model KosherProduct {
-  id          String @id @default(cuid())
+  id          String        @id @default(cuid())
   name        String
   brand       String?
   category    String?
@@ -187,26 +247,126 @@ model KosherProduct {
   imageUrl    String?
   createdById String
   status      ContentStatus @default(PENDING)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdBy   User @relation(fields: [createdById], references: [id])
-  country     Country? @relation(fields: [countryId], references: [id])
-  city        City? @relation(fields: [cityId], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  createdBy   User          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  country     Country?      @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  city        City?         @relation(fields: [cityId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
 }
 
 model GuideProfile {
-  id             String @id @default(cuid())
-  userId         String @unique
-  displayName    String
-  bio            String?
-  phone          String?
-  email          String?
-  website        String?
-  languages      String[]
-  imageUrl       String?
+  id              String        @id @default(cuid())
+  userId          String        @unique
+  displayName     String
+  bio             String?
+  phone           String?
+  email           String?
+  website         String?
+  languages       String[]
+  imageUrl        String?
   yearsExperience Int?
-  status         ContentStatus @default(PENDING)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  user           User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          ContentStatus @default(PENDING)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trips           Trip[]
+
+  @@index([status, createdAt])
 }
+
+model Trip {
+  id             String               @id @default(cuid())
+  guideId        String
+  title          String
+  description    String?
+  countryId      String?
+  cityId         String?
+  imageUrl       String?
+  status         TripStatus           @default(PENDING)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  guide          GuideProfile         @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  country        Country?             @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  city           City?                @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  recommendations TripRecommendation[]
+  accommodations Accommodation[]
+
+  @@index([status, createdAt])
+}
+
+model TripRecommendation {
+  id          String             @id @default(cuid())
+  tripId      String
+  title       String
+  type        RecommendationType
+  description String?
+  address     String?
+  latitude    Float?
+  longitude   Float?
+  imageUrl    String?
+  sortOrder   Int                @default(0)
+  status      ContentStatus      @default(PENDING)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  trip        Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId, sortOrder])
+  @@index([status, createdAt])
+}
+
+model Accommodation {
+  id          String        @id @default(cuid())
+  tripId      String
+  name        String
+  type        AccommodationType
+  description String?
+  address     String?
+  latitude    Float?
+  longitude   Float?
+  website     String?
+  phone       String?
+  imageUrl    String?
+  createdById String
+  status      ContentStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  trip        Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  createdBy   User          @relation("AccommodationCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([tripId, status])
+}
+
+model Report {
+  id          String        @id @default(cuid())
+  reporterId  String
+  entityType  ReportEntityType
+  entityId    String
+  reason      String
+  description String?
+  status      ReportStatus  @default(OPEN)
+  createdAt   DateTime      @default(now())
+  resolvedAt  DateTime?
+  resolvedById String?
+  reporter    User          @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  resolvedBy  User?         @relation("ReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([status, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+}
+

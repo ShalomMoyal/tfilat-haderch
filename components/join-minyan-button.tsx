@@ -15,7 +15,7 @@ export default function JoinMinyanButton({ minyanId }: { minyanId: string }) {
     setMessage('')
     const result = joined ? await leaveMinyan(minyanId) : await joinMinyan(minyanId)
     setPending(false)
-    if (result.error) {
+    if ('error' in result && result.error) {
       setMessage(result.error)
       return
     }

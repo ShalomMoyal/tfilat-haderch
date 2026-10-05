@@ -11,13 +11,12 @@ export default async function AdminPage() {
   if (!session?.user?.id) redirect('/login?callbackUrl=/admin')
   if (session.user.role !== 'ADMIN') redirect('/dashboard')
 
-  const [pendingMinyanim, pendingLocations, pendingProducts] = await Promise.all([
-    prisma.minyan.findMany({ where: { status: 'PENDING' }, include: { createdBy: { select: { name: true, email: true } } }, orderBy: { createdAt: 'desc' }, take: 5 }),
+  const [pendingLocations, pendingProducts] = await Promise.all([
     prisma.jewishLocation.findMany({ where: { status: 'PENDING' }, include: { createdBy: { select: { name: true, email: true } } }, orderBy: { createdAt: 'desc' }, take: 5 }),
     prisma.kosherProduct.findMany({ where: { status: 'PENDING' }, include: { createdBy: { select: { name: true, email: true } } }, orderBy: { createdAt: 'desc' }, take: 5 }),
   ])
 
-  const totalPending = pendingMinyanim.length + pendingLocations.length + pendingProducts.length
+  const totalPending = pendingLocations.length + pendingProducts.length
 
   return (
     <main className="min-h-screen bg-[#f7f7f2] px-5 py-10 text-[#183f52] md:px-10 md:py-16">
@@ -35,24 +34,12 @@ export default async function AdminPage() {
           </Link>
         </div>
 
-        <div className="mt-10 grid gap-4 md:grid-cols-3">
+        <div className="mt-10 grid gap-4 md:grid-cols-2">
           <AdminStat label="Pending approvals" value={String(totalPending)} icon={Clock3} tone="coral" />
-          <AdminStat label="Minyan submissions" value={String(pendingMinyanim.length)} icon={ShieldCheck} tone="green" />
           <AdminStat label="Active members" value="2,480" icon={Users} tone="blue" />
         </div>
 
         <div className="mt-10 space-y-8">
-          <QueueSection
-            title="Minyan submissions"
-            items={pendingMinyanim.map((item: { id: string; title: string; prayerType: string; type: 'ONE_TIME' | 'RECURRING'; createdBy?: { name: string | null; email: string | null } | null }) => ({
-              id: item.id,
-              title: item.title,
-              subtitle: `${item.prayerType} · ${item.type === 'RECURRING' ? 'Recurring' : 'One-time'}`,
-              meta: item.createdBy?.name ?? item.createdBy?.email ?? 'Community member',
-              type: 'MINYAN' as const,
-            }))}
-          />
-
           <QueueSection
             title="Jewish places"
             items={pendingLocations.map((item: { id: string; name: string; type: string; createdBy?: { name: string | null; email: string | null } | null }) => ({

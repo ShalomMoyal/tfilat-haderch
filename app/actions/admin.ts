@@ -1,8 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 
 export async function reviewContent(
@@ -10,9 +9,11 @@ export async function reviewContent(
   id: string,
   status: 'ACTIVE' | 'REJECTED' | 'INACTIVE'
 ) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) return { error: 'You must be signed in to moderate content.' }
-  if (session.user.role !== 'ADMIN') return { error: 'Only admins can approve content.' }
+  try {
+    await requireAdmin()
+  } catch {
+    return { error: 'Only admins can approve content.' }
+  }
 
   try {
     if (target === 'MINYAN') {

@@ -1,9 +1,8 @@
 'use server'
 
-import { getServerSession } from 'next-auth'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { authOptions } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 
 type ActiveMinyan = {
@@ -62,8 +61,7 @@ const minyanSearchSchema = z.object({
 })
 
 export async function createMinyan(input: unknown) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) return { error: 'You must be signed in to create a minyan.' }
+  const session = await requireAuth()
   if (!process.env.DATABASE_URL) return { error: 'Database is not configured yet. Please try again later.' }
 
   const parsed = minyanSchema.safeParse(input)
@@ -73,7 +71,7 @@ export async function createMinyan(input: unknown) {
     await prisma.minyan.create({
       data: {
         ...parsed.data,
-        status: 'PENDING',
+        status: 'ACTIVE',
         createdById: session.user.id,
       },
     })
@@ -86,8 +84,7 @@ export async function createMinyan(input: unknown) {
 }
 
 export async function joinMinyan(minyanId: string) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) return { error: 'Sign in to join a minyan.' }
+  const session = await requireAuth()
   const minyan = await prisma.minyan.findFirst({ where: { id: minyanId, status: 'ACTIVE', expiresAt: { gt: new Date() } } })
   if (!minyan) return { error: 'This minyan is no longer available.' }
   await prisma.minyanParticipant.upsert({ where: { minyanId_userId: { minyanId, userId: session.user.id } }, create: { minyanId, userId: session.user.id }, update: {} })
@@ -96,8 +93,7 @@ export async function joinMinyan(minyanId: string) {
 }
 
 export async function leaveMinyan(minyanId: string) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) return { error: 'Sign in to manage your minyan participation.' }
+  const session = await requireAuth()
   await prisma.minyanParticipant.deleteMany({ where: { minyanId, userId: session.user.id } })
   revalidatePath('/')
   return { success: true }
