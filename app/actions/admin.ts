@@ -5,7 +5,7 @@ import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 
 export async function reviewContent(
-  target: 'MINYAN' | 'LOCATION' | 'PRODUCT',
+  target: 'LOCATION' | 'PRODUCT',
   id: string,
   status: 'ACTIVE' | 'REJECTED' | 'INACTIVE'
 ) {
@@ -16,9 +16,6 @@ export async function reviewContent(
   }
 
   try {
-    if (target === 'MINYAN') {
-      await prisma.minyan.update({ where: { id }, data: { status } })
-    }
     if (target === 'LOCATION') {
       await prisma.jewishLocation.update({ where: { id }, data: { status } })
     }

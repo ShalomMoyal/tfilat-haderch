@@ -4,23 +4,28 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { joinMinyan, leaveMinyan } from '@/app/actions/minyan'
 
-export default function JoinMinyanButton({ minyanId }: { minyanId: string }) {
+export default function JoinMinyanButton({ minyanId, initialJoined = false }: { minyanId: string; initialJoined?: boolean }) {
   const router = useRouter()
-  const [joined, setJoined] = useState(false)
+  const [joined, setJoined] = useState(initialJoined)
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState('')
 
   async function toggle() {
     setPending(true)
     setMessage('')
-    const result = joined ? await leaveMinyan(minyanId) : await joinMinyan(minyanId)
-    setPending(false)
-    if ('error' in result && result.error) {
-      setMessage(result.error)
-      return
+    try {
+      const result = joined ? await leaveMinyan(minyanId) : await joinMinyan(minyanId)
+      if ('error' in result && result.error) {
+        setMessage(result.error)
+        return
+      }
+      setJoined(!joined)
+      router.refresh()
+    } catch {
+      setMessage('Could not update your participation. Please try again.')
+    } finally {
+      setPending(false)
     }
-    setJoined((current) => !current)
-    router.refresh()
   }
 
   return (

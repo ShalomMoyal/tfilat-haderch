@@ -1,11 +1,18 @@
 import Link from 'next/link'
 import { getActiveMinyanim } from '@/app/actions/minyan'
 import MinyanDirectory, { type MinyanListItem } from '@/components/minyan-directory'
+import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
 export default async function MinyanimPage() {
-  const minyanim = await getActiveMinyanim()
+  const [minyanim, countries] = await Promise.all([
+    getActiveMinyanim(),
+    prisma.country.findMany({
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, cities: { orderBy: { name: 'asc' }, select: { id: true, name: true } } },
+    }),
+  ])
   const items: MinyanListItem[] = minyanim.map((minyan) => ({
     id: minyan.id,
     title: minyan.title,
@@ -36,7 +43,7 @@ export default async function MinyanimPage() {
           <h1 className="mt-3 text-4xl font-medium tracking-[-.05em] md:text-5xl">Find a minyan</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[#718489]">Browse active gatherings shared by travelers and local communities.</p>
           <div className="mt-9">
-            <MinyanDirectory minyanim={items} />
+            <MinyanDirectory minyanim={items} countries={countries} />
           </div>
         </div>
       </section>

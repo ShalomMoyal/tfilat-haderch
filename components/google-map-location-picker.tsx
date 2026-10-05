@@ -34,7 +34,7 @@ type MapsApi = {
     InfoWindow?: MapsLibrary['InfoWindow']
   }
 }
-export type GoogleMapMarker = { id: string; title: string; position: Coordinates; href: string }
+export type GoogleMapMarker = { id: string; title: string; subtitle?: string; position: Coordinates; href: string }
 
 declare global {
   interface Window {
@@ -108,12 +108,15 @@ export default function GoogleMapLocationPicker({
         const content = document.createElement('div')
         const title = document.createElement('strong')
         title.textContent = minyan.title
+        const details = document.createElement('p')
+        details.textContent = minyan.subtitle ?? ''
+        details.style.margin = '4px 0 0'
         const link = document.createElement('a')
         link.href = minyan.href
         link.textContent = 'View minyan details'
         link.style.display = 'block'
         link.style.marginTop = '6px'
-        content.append(title, link)
+        content.append(title, details, link)
         infoWindow.current?.setContent(content)
         infoWindow.current?.open({ map: mapInstance.current!, anchor: marker })
       })

@@ -4,7 +4,7 @@ import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { reviewContent } from '@/app/actions/admin'
 
-type ReviewTarget = 'MINYAN' | 'LOCATION' | 'PRODUCT'
+type ReviewTarget = 'LOCATION' | 'PRODUCT'
 
 export function ReviewButtons({ target, id }: { target: ReviewTarget; id: string }) {
   const router = useRouter()

@@ -7,10 +7,11 @@ import { prisma } from '@/lib/prisma'
 
 export default async function DashboardPage() {
   const session = await requireAuth()
+  const now = new Date()
 
-  const [joined, created] = await Promise.all([
+  const [joined, created, joinedCount, activeCreatedCount] = await Promise.all([
     prisma.minyanParticipant.findMany({
-      where: { userId: session.user.id },
+      where: { userId: session.user.id, minyan: { is: { status: 'ACTIVE', expiresAt: { gt: now } } } },
       include: { minyan: { include: { city: true, country: true, _count: { select: { participants: true } } } } },
       orderBy: { createdAt: 'desc' },
       take: 6,
@@ -18,9 +19,13 @@ export default async function DashboardPage() {
     prisma.minyan.findMany({
       where: { createdById: session.user.id },
       include: { city: true, country: true, _count: { select: { participants: true } } },
-      orderBy: { startDateTime: 'asc' },
+      orderBy: { createdAt: 'desc' },
       take: 6,
     }),
+    prisma.minyanParticipant.count({
+      where: { userId: session.user.id, minyan: { is: { status: 'ACTIVE', expiresAt: { gt: now } } } },
+    }),
+    prisma.minyan.count({ where: { createdById: session.user.id, status: 'ACTIVE', expiresAt: { gt: now } } }),
   ])
 
   return (
@@ -73,8 +78,8 @@ export default async function DashboardPage() {
         </div>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-3">
-          <Stat label="Joined gatherings" value={joined.length} icon={Users} />
-          <Stat label="Created by you" value={created.length} icon={CalendarDays} />
+          <Stat label="Joined gatherings" value={joinedCount} icon={Users} />
+          <Stat label="Active minyanim created" value={activeCreatedCount} icon={CalendarDays} />
           <div className="rounded-2xl border border-[#dfe5e0] bg-[#e0eee5] p-5">
             <p className="text-sm text-[#54816e]">Community status</p>
             <p className="mt-3 text-xl font-semibold text-[#183f52]">Connected</p>
@@ -119,6 +124,8 @@ type DashboardMinyanSummary = {
   id: string
   title: string
   startDateTime: Date
+  expiresAt: Date
+  status: string
   address: string | null
   city: { name: string } | null
   country: { name: string } | null
@@ -141,7 +148,12 @@ function List({ title, items, empty, emptyHref, emptyLabel }: { title: string; i
             <Link href={`/minyan/${minyan.id}`} key={minyan.id} className="group rounded-2xl border border-[#dfe5e0] bg-white p-5 transition hover:-translate-y-0.5 hover:border-[#a9c3b7] hover:shadow-lg">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="font-semibold group-hover:text-[#d57561]">{minyan.title}</h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold group-hover:text-[#d57561]">{minyan.title}</h3>
+                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${minyan.status === 'ACTIVE' && minyan.expiresAt > new Date() ? 'bg-[#e0eee5] text-[#467568]' : 'bg-[#f6e2dc] text-[#a94f40]'}`}>
+                      {minyan.status === 'ACTIVE' && minyan.expiresAt > new Date() ? 'Active' : minyan.status === 'EXPIRED' || minyan.expiresAt <= new Date() ? 'Expired' : minyan.status}
+                    </span>
+                  </div>
                   <p className="mt-2 flex items-center gap-2 text-sm text-[#718489]">
                     <MapPin size={15} className="text-[#d57561]" />
                     {minyan.city?.name ?? minyan.address ?? 'Location to be confirmed'}

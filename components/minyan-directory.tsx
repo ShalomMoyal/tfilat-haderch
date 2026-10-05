@@ -51,14 +51,17 @@ function toListItem(minyan: ActiveMinyanRow): MinyanListItem {
   }
 }
 
-export default function MinyanDirectory({ minyanim }: { minyanim: MinyanListItem[] }) {
+export default function MinyanDirectory({ minyanim, countries }: { minyanim: MinyanListItem[]; countries: { id: string; name: string; cities: { id: string; name: string }[] }[] }) {
   const [query, setQuery] = useState('')
   const [prayerType, setPrayerType] = useState('ALL')
   const [minyanType, setMinyanType] = useState('ALL')
+  const [countryId, setCountryId] = useState('')
+  const [cityId, setCityId] = useState('')
   const [date, setDate] = useState('')
   const [records, setRecords] = useState(minyanim)
   const [view, setView] = useState<'map' | 'list'>('map')
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [searchNearPoint, setSearchNearPoint] = useState(false)
   const [manualLatitude, setManualLatitude] = useState('')
   const [manualLongitude, setManualLongitude] = useState('')
   const [loading, setLoading] = useState(false)
@@ -75,6 +78,11 @@ export default function MinyanDirectory({ minyanim }: { minyanim: MinyanListItem
         prayerType: prayerType === 'ALL' ? undefined : prayerType,
         type: minyanType === 'ALL' ? undefined : minyanType,
         date: date || undefined,
+        countryId: countryId || undefined,
+        cityId: cityId || undefined,
+        latitude: searchNearPoint ? selectedLocation?.lat : undefined,
+        longitude: searchNearPoint ? selectedLocation?.lng : undefined,
+        radiusKm: 50,
         skip: 0,
         take: pageSize,
       }).then((rows) => {
@@ -93,13 +101,13 @@ export default function MinyanDirectory({ minyanim }: { minyanim: MinyanListItem
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [date, minyanType, prayerType, query])
+  }, [countryId, cityId, date, minyanType, prayerType, query, searchNearPoint, selectedLocation])
 
   const filteredMinyanim = records
 
   const mapMarkers = filteredMinyanim.flatMap((minyan) => (
     minyan.latitude !== null && minyan.longitude !== null
-      ? [{ id: minyan.id, title: minyan.title, position: { lat: minyan.latitude, lng: minyan.longitude }, href: `/minyan/${minyan.id}` }]
+      ? [{ id: minyan.id, title: minyan.title, subtitle: `${prayerLabels[minyan.prayerType]} · ${minyan.participantCount} attending`, position: { lat: minyan.latitude, lng: minyan.longitude }, href: `/minyan/${minyan.id}` }]
       : []
   ))
 
@@ -120,6 +128,11 @@ export default function MinyanDirectory({ minyanim }: { minyanim: MinyanListItem
         prayerType: prayerType === 'ALL' ? undefined : prayerType,
         type: minyanType === 'ALL' ? undefined : minyanType,
         date: date || undefined,
+        countryId: countryId || undefined,
+        cityId: cityId || undefined,
+        latitude: searchNearPoint ? selectedLocation?.lat : undefined,
+        longitude: searchNearPoint ? selectedLocation?.lng : undefined,
+        radiusKm: 50,
         skip: records.length,
         take: pageSize,
       })
@@ -135,7 +148,7 @@ export default function MinyanDirectory({ minyanim }: { minyanim: MinyanListItem
 
   return (
     <div>
-      <div className="grid gap-3 rounded-2xl border border-[#dfe5e0] bg-white p-4 md:grid-cols-[minmax(220px,1fr)_180px_170px_170px]">
+      <div className="grid gap-3 rounded-2xl border border-[#dfe5e0] bg-white p-4 md:grid-cols-3 xl:grid-cols-6">
         <label className="flex min-w-0 items-center gap-3 rounded-xl border border-[#dfe5e0] px-3">
           <Search size={17} className="shrink-0 text-[#6b9a83]" />
           <span className="sr-only">Search minyanim and destinations</span>
@@ -159,6 +172,20 @@ export default function MinyanDirectory({ minyanim }: { minyanim: MinyanListItem
         <label className="flex items-center rounded-xl border border-[#dfe5e0] px-3 text-xs font-semibold text-[#718489]">
           <span className="sr-only">Prayer date</span>
           <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="w-full bg-transparent py-3 text-sm text-[#183f52] outline-none" />
+        </label>
+        <label className="flex items-center rounded-xl border border-[#dfe5e0] px-3 text-xs font-semibold text-[#718489]">
+          <span className="sr-only">Country</span>
+          <select value={countryId} onChange={(event) => { setCountryId(event.target.value); setCityId('') }} className="w-full bg-transparent py-3 text-sm text-[#183f52] outline-none">
+            <option value="">All countries</option>
+            {countries.map((country) => <option key={country.id} value={country.id}>{country.name}</option>)}
+          </select>
+        </label>
+        <label className="flex items-center rounded-xl border border-[#dfe5e0] px-3 text-xs font-semibold text-[#718489]">
+          <span className="sr-only">City</span>
+          <select value={cityId} onChange={(event) => setCityId(event.target.value)} disabled={!countryId} className="w-full bg-transparent py-3 text-sm text-[#183f52] outline-none disabled:opacity-50">
+            <option value="">All cities</option>
+            {countries.find((country) => country.id === countryId)?.cities.map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}
+          </select>
         </label>
       </div>
 
@@ -185,7 +212,12 @@ export default function MinyanDirectory({ minyanim }: { minyanim: MinyanListItem
           {selectedLocation && (
             <div className="flex flex-col justify-between gap-3 rounded-2xl border border-[#cbd9d3] bg-white p-4 sm:flex-row sm:items-center">
               <p className="text-sm text-[#718489]">Selected point: {selectedLocation.lat.toFixed(5)}, {selectedLocation.lng.toFixed(5)}</p>
-              <Link href={`/dashboard/minyan/new?latitude=${selectedLocation.lat}&longitude=${selectedLocation.lng}`} className="rounded-full bg-[#183f52] px-4 py-2.5 text-center text-sm font-semibold text-white">Create a minyan here</Link>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => setSearchNearPoint((current) => !current)} className={`rounded-full px-4 py-2.5 text-sm font-semibold ${searchNearPoint ? 'bg-[#d57561] text-white' : 'border border-[#b9c7c5] text-[#183f52]'}`}>
+                  {searchNearPoint ? 'Searching near this point' : 'Search near this point'}
+                </button>
+                <Link href={`/dashboard/minyan/new?latitude=${selectedLocation.lat}&longitude=${selectedLocation.lng}`} className="rounded-full bg-[#183f52] px-4 py-2.5 text-center text-sm font-semibold text-white">Create a minyan here</Link>
+              </div>
             </div>
           )}
           {filteredMinyanim.length === 0 && <p className="rounded-xl bg-white p-4 text-sm text-[#718489]">No active minyanim match these filters. You can still choose a point to create one.</p>}
@@ -223,7 +255,7 @@ export default function MinyanDirectory({ minyanim }: { minyanim: MinyanListItem
           <MapPin className="mx-auto text-[#6b9a83]" size={24} />
           <h2 className="mt-4 text-lg font-semibold">No minyanim found</h2>
           <p className="mt-2 text-sm text-[#718489]">Try a different destination or clear the filters.</p>
-          <button type="button" onClick={() => { setQuery(''); setPrayerType('ALL'); setMinyanType('ALL'); setDate('') }} className="mt-5 text-sm font-semibold text-[#c96552] hover:underline">Clear filters</button>
+          <button type="button" onClick={() => { setQuery(''); setPrayerType('ALL'); setMinyanType('ALL'); setCountryId(''); setCityId(''); setDate(''); setSearchNearPoint(false) }} className="mt-5 text-sm font-semibold text-[#c96552] hover:underline">Clear filters</button>
         </div>
       )}
       {view === 'list' && hasMore && (

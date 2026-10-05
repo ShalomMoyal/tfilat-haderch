@@ -10,7 +10,7 @@ type QueueReviewItem = {
   title: string
   subtitle: string
   meta: string
-  type: 'MINYAN' | 'LOCATION' | 'PRODUCT'
+  type: 'LOCATION' | 'PRODUCT'
 }
 
 export default async function AdminPage() {
@@ -42,7 +42,10 @@ export default async function AdminPage() {
             <p className="mt-8 text-[12px] font-semibold uppercase tracking-[.15em] text-[#d57561]">Administration</p>
             <h1 className="mt-2 text-4xl font-medium tracking-[-.05em]">Community review queue</h1>
           </div>
-          <Link href="/dashboard" className="rounded-full border border-[#b9c7c5] px-4 py-2 text-sm font-semibold">Back to dashboard</Link>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/admin/minyanim" className="rounded-full bg-[#183f52] px-4 py-2 text-sm font-semibold text-white">Manage Minyanim</Link>
+            <Link href="/dashboard" className="rounded-full border border-[#b9c7c5] px-4 py-2 text-sm font-semibold">Back to dashboard</Link>
+          </div>
         </div>
 
         <div className="mt-10 grid gap-4 md:grid-cols-2">
