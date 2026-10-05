@@ -1,6 +1,14 @@
+import { redirect } from 'next/navigation'
 import { GuideLanding } from '@/components/discovery-page'
+import { requireRole } from '@/lib/auth-helpers'
 
-export default function GuidePage() {
+export default async function GuidePage() {
+  try {
+    await requireRole('GUIDE')
+  } catch {
+    redirect('/dashboard')
+  }
+
   return <GuideLanding />
 }
 

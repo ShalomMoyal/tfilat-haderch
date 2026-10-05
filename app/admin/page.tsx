@@ -1,15 +1,30 @@
-import Link from 'next/link'
-import { Clock3, ShieldCheck, Users } from 'lucide-react'
+﻿import Link from 'next/link'
+import { Clock3, Users } from 'lucide-react'
 import { redirect } from 'next/navigation'
-import { getServerSession } from 'next-auth'
 import { ReviewButtons } from '@/components/review-buttons'
-import { authOptions } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 
+type QueueReviewItem = {
+  id: string
+  title: string
+  subtitle: string
+  meta: string
+  type: 'MINYAN' | 'LOCATION' | 'PRODUCT'
+}
+
 export default async function AdminPage() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) redirect('/login?callbackUrl=/admin')
-  if (session.user.role !== 'ADMIN') redirect('/dashboard')
+  let session: Awaited<ReturnType<typeof requireAdmin>>
+
+  try {
+    session = await requireAdmin()
+  } catch {
+    redirect('/login?callbackUrl=/admin')
+  }
+
+  if (session.user.role !== 'ADMIN') {
+    redirect('/dashboard')
+  }
 
   const [pendingLocations, pendingProducts] = await Promise.all([
     prisma.jewishLocation.findMany({ where: { status: 'PENDING' }, include: { createdBy: { select: { name: true, email: true } } }, orderBy: { createdAt: 'desc' }, take: 5 }),
@@ -23,15 +38,11 @@ export default async function AdminPage() {
       <div className="mx-auto max-w-[1200px]">
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-[#6b9a83]">
-              ← Home
-            </Link>
+            <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-[#6b9a83]">← Home</Link>
             <p className="mt-8 text-[12px] font-semibold uppercase tracking-[.15em] text-[#d57561]">Administration</p>
             <h1 className="mt-2 text-4xl font-medium tracking-[-.05em]">Community review queue</h1>
           </div>
-          <Link href="/dashboard" className="rounded-full border border-[#b9c7c5] px-4 py-2 text-sm font-semibold">
-            Back to dashboard
-          </Link>
+          <Link href="/dashboard" className="rounded-full border border-[#b9c7c5] px-4 py-2 text-sm font-semibold">Back to dashboard</Link>
         </div>
 
         <div className="mt-10 grid gap-4 md:grid-cols-2">
@@ -40,27 +51,8 @@ export default async function AdminPage() {
         </div>
 
         <div className="mt-10 space-y-8">
-          <QueueSection
-            title="Jewish places"
-            items={pendingLocations.map((item: { id: string; name: string; type: string; createdBy?: { name: string | null; email: string | null } | null }) => ({
-              id: item.id,
-              title: item.name,
-              subtitle: item.type,
-              meta: item.createdBy?.name ?? item.createdBy?.email ?? 'Community member',
-              type: 'LOCATION' as const,
-            }))}
-          />
-
-          <QueueSection
-            title="Kosher product records"
-            items={pendingProducts.map((item: { id: string; name: string; brand: string | null; createdBy?: { name: string | null; email: string | null } | null }) => ({
-              id: item.id,
-              title: item.name,
-              subtitle: item.brand ?? 'Product record',
-              meta: item.createdBy?.name ?? item.createdBy?.email ?? 'Community member',
-              type: 'PRODUCT' as const,
-            }))}
-          />
+          <QueueSection title="Jewish places" items={pendingLocations.map((item: any) => ({ id: item.id, title: item.name, subtitle: item.type, meta: item.createdBy?.name ?? item.createdBy?.email ?? 'Community member', type: 'LOCATION' as const }))} />
+          <QueueSection title="Kosher product records" items={pendingProducts.map((item: any) => ({ id: item.id, title: item.name, subtitle: item.brand ?? 'Product record', meta: item.createdBy?.name ?? item.createdBy?.email ?? 'Community member', type: 'PRODUCT' as const }))} />
         </div>
       </div>
     </main>
@@ -78,16 +70,14 @@ function AdminStat({ label, value, icon: Icon, tone }: { label: string; value: s
     <div className="rounded-2xl border border-[#dfe5e0] bg-white p-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-[#6b7d83]">{label}</p>
-        <span className={`grid size-10 place-items-center rounded-xl ${colors[tone]}`}>
-          <Icon size={18} />
-        </span>
+        <span className={`grid size-10 place-items-center rounded-xl ${colors[tone]}`}><Icon size={18} /></span>
       </div>
       <p className="mt-4 text-3xl font-semibold tracking-[-.05em]">{value}</p>
     </div>
   )
 }
 
-function QueueSection({ title, items }: { title: string; items: { id: string; title: string; subtitle: string; meta: string; type: 'MINYAN' | 'LOCATION' | 'PRODUCT' }[] }) {
+function QueueSection({ title, items }: { title: string; items: QueueReviewItem[] }) {
   return (
     <section className="rounded-[22px] border border-[#dfe5e0] bg-white p-6">
       <div className="flex items-center justify-between gap-4">
@@ -100,9 +90,7 @@ function QueueSection({ title, items }: { title: string; items: { id: string; ti
 
       <div className="mt-6 space-y-4">
         {items.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#cbd9d3] bg-[#f7f7f2] p-5 text-sm text-[#718489]">
-            No pending submissions in this queue.
-          </div>
+          <div className="rounded-2xl border border-dashed border-[#cbd9d3] bg-[#f7f7f2] p-5 text-sm text-[#718489]">No pending submissions in this queue.</div>
         ) : (
           items.map((item) => (
             <div key={item.id} className="flex flex-col gap-4 rounded-2xl border border-[#edf0ed] bg-[#f9f9f7] p-4 md:flex-row md:items-center md:justify-between">
