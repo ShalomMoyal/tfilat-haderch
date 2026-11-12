@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { reviewContent } from '@/app/actions/admin'
 
-type ReviewTarget = 'LOCATION' | 'PRODUCT'
+type ReviewTarget = 'LOCATION' | 'PRODUCT' | 'GUIDE'
 
 export function ReviewButtons({ target, id }: { target: ReviewTarget; id: string }) {
   const router = useRouter()

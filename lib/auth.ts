@@ -71,10 +71,12 @@ export const authOptions: NextAuthOptions = {
         token.id = token.sub
       }
 
-      if (!token.role && token.email) {
+      if (token.email) {
         const dbUser = await prisma.user.findUnique({ where: { email: String(token.email).toLowerCase() } })
         if (dbUser) {
+          token.id = dbUser.id
           token.role = dbUser.role
+          token.name = dbUser.name ?? token.name
         }
       }
 

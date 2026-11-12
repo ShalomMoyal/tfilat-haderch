@@ -9,7 +9,7 @@ export default async function DashboardPage() {
   const session = await requireAuth()
   const now = new Date()
 
-  const [joined, created, joinedCount, activeCreatedCount, products] = await Promise.all([
+  const [joined, created, joinedCount, activeCreatedCount, products, guideProfile] = await Promise.all([
     prisma.minyanParticipant.findMany({
       where: { userId: session.user.id, minyan: { is: { status: 'ACTIVE', expiresAt: { gt: now } } } },
       include: { minyan: { include: { city: true, country: true, _count: { select: { participants: true } } } } },
@@ -32,6 +32,7 @@ export default async function DashboardPage() {
       orderBy: { updatedAt: 'desc' },
       take: 12,
     }),
+    prisma.guideProfile.findUnique({ where: { userId: session.user.id } }),
   ])
 
   return (
@@ -58,10 +59,19 @@ export default async function DashboardPage() {
             <p className="mt-3 text-[#718489]">Your prayer plans and community connections, all in one place.</p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Link href="/dashboard/minyan/new" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#183f52] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#28566b]">
               <Plus size={17} /> Create a minyan
             </Link>
+            {guideProfile ? (
+              <Link href="/guide" className="inline-flex items-center justify-center rounded-full bg-[#e0eee5] px-5 py-3 text-sm font-semibold text-[#183f52]">
+                Guide profile
+              </Link>
+            ) : (
+              <Link href="/guide/apply" className="inline-flex items-center justify-center rounded-full bg-[#f6e2dc] px-5 py-3 text-sm font-semibold text-[#bd614f]">
+                Become a guide
+              </Link>
+            )}
             <LogoutButton />
           </div>
         </div>

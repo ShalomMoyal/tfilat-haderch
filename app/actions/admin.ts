@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 
-const reviewTargetSchema = z.enum(['LOCATION', 'PRODUCT'])
+const reviewTargetSchema = z.enum(['LOCATION', 'PRODUCT', 'GUIDE'])
 const reviewIdSchema = z.string().cuid()
 const reviewStatusSchema = z.enum(['ACTIVE', 'REJECTED', 'INACTIVE'])
 
@@ -34,8 +34,24 @@ export async function reviewContent(
     if (parsedTarget.data === 'PRODUCT') {
       await prisma.kosherProduct.update({ where: { id: parsedId.data }, data: { status: parsedStatus.data } })
     }
+    if (parsedTarget.data === 'GUIDE') {
+      const guide = await prisma.guideProfile.update({
+        where: { id: parsedId.data },
+        data: { status: parsedStatus.data },
+        select: { userId: true },
+      })
+
+      if (parsedStatus.data === 'ACTIVE') {
+        await prisma.user.update({ where: { id: guide.userId }, data: { role: 'GUIDE' } })
+      } else {
+        await prisma.user.update({ where: { id: guide.userId }, data: { role: 'USER' } })
+      }
+    }
 
     revalidatePath('/admin')
+    revalidatePath('/guide')
+    revalidatePath('/guides')
+    revalidatePath('/dashboard')
     revalidatePath('/minyanim')
     revalidatePath('/kosher')
     revalidatePath('/')

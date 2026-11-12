@@ -26,16 +26,19 @@ export default async function AdminPage() {
     redirect('/dashboard')
   }
 
-  const [pendingLocations, pendingProducts] = await Promise.all([
+  const [pendingLocations, pendingProducts, pendingGuides] = await Promise.all([
     prisma.jewishLocation.findMany({ where: { status: 'PENDING' }, include: { createdBy: { select: { name: true, email: true } } }, orderBy: { createdAt: 'desc' }, take: 5 }),
     prisma.kosherProduct.findMany({ where: { status: 'PENDING' }, include: { createdBy: { select: { name: true, email: true } } }, orderBy: { createdAt: 'desc' }, take: 5 }),
+    prisma.guideProfile.findMany({ where: { status: 'PENDING' }, include: { user: { select: { name: true, email: true } } }, orderBy: { createdAt: 'desc' }, take: 5 }),
   ])
-  const [pendingLocationCount, pendingProductCount, activeProductsCount] = await Promise.all([
+  const [pendingLocationCount, pendingProductCount, pendingGuideCount, activeProductsCount, activeGuideCount] = await Promise.all([
     prisma.jewishLocation.count({ where: { status: 'PENDING' } }),
     prisma.kosherProduct.count({ where: { status: 'PENDING' } }),
+    prisma.guideProfile.count({ where: { status: 'PENDING' } }),
     prisma.kosherProduct.count({ where: { status: 'ACTIVE' } }),
+    prisma.guideProfile.count({ where: { status: 'ACTIVE' } }),
   ])
-  const totalPending = pendingLocationCount + pendingProductCount
+  const totalPending = pendingLocationCount + pendingProductCount + pendingGuideCount
 
   return (
     <main className="min-h-screen bg-[#f7f7f2] px-5 py-10 text-[#183f52] md:px-10 md:py-16">
@@ -53,14 +56,16 @@ export default async function AdminPage() {
           </div>
         </div>
 
-        <div className="mt-10 grid gap-4 md:grid-cols-2">
+        <div className="mt-10 grid gap-4 md:grid-cols-3">
           <AdminStat label="Pending approvals" value={String(totalPending)} icon={Clock3} tone="coral" />
           <AdminStat label="Active Kosher Products" value={String(activeProductsCount)} icon={PackageCheck} tone="blue" />
+          <AdminStat label="Active guides" value={String(activeGuideCount)} icon={Clock3} tone="green" />
         </div>
 
         <div className="mt-10 space-y-8">
           <QueueSection title="Jewish places" items={pendingLocations.map((item: any) => ({ id: item.id, title: item.name, subtitle: item.type, meta: item.createdBy?.name ?? item.createdBy?.email ?? 'Community member', type: 'LOCATION' as const }))} />
           <QueueSection title="Kosher product records" items={pendingProducts.map((item: any) => ({ id: item.id, title: item.name, subtitle: item.brand ?? 'Product record', meta: item.createdBy?.name ?? item.createdBy?.email ?? 'Community member', type: 'PRODUCT' as const }))} />
+          <QueueSection title="Guide applications" items={pendingGuides.map((item: any) => ({ id: item.id, title: item.displayName, subtitle: item.bio ?? 'Guide application', meta: item.user?.name ?? item.user?.email ?? 'Community member', type: 'GUIDE' as const }))} />
         </div>
       </div>
     </main>
