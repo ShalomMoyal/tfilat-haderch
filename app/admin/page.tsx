@@ -1,5 +1,5 @@
 ﻿import Link from 'next/link'
-import { Clock3, Users } from 'lucide-react'
+import { Clock3, PackageCheck } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { ReviewButtons } from '@/components/review-buttons'
 import { requireAdmin } from '@/lib/auth-helpers'
@@ -30,8 +30,12 @@ export default async function AdminPage() {
     prisma.jewishLocation.findMany({ where: { status: 'PENDING' }, include: { createdBy: { select: { name: true, email: true } } }, orderBy: { createdAt: 'desc' }, take: 5 }),
     prisma.kosherProduct.findMany({ where: { status: 'PENDING' }, include: { createdBy: { select: { name: true, email: true } } }, orderBy: { createdAt: 'desc' }, take: 5 }),
   ])
-
-  const totalPending = pendingLocations.length + pendingProducts.length
+  const [pendingLocationCount, pendingProductCount, activeProductsCount] = await Promise.all([
+    prisma.jewishLocation.count({ where: { status: 'PENDING' } }),
+    prisma.kosherProduct.count({ where: { status: 'PENDING' } }),
+    prisma.kosherProduct.count({ where: { status: 'ACTIVE' } }),
+  ])
+  const totalPending = pendingLocationCount + pendingProductCount
 
   return (
     <main className="min-h-screen bg-[#f7f7f2] px-5 py-10 text-[#183f52] md:px-10 md:py-16">
@@ -43,6 +47,7 @@ export default async function AdminPage() {
             <h1 className="mt-2 text-4xl font-medium tracking-[-.05em]">Community review queue</h1>
           </div>
           <div className="flex flex-wrap gap-3">
+            <Link href="/admin/kosher" className="rounded-full bg-[#d57561] px-4 py-2 text-sm font-semibold text-white">Manage Kosher Products</Link>
             <Link href="/admin/minyanim" className="rounded-full bg-[#183f52] px-4 py-2 text-sm font-semibold text-white">Manage Minyanim</Link>
             <Link href="/dashboard" className="rounded-full border border-[#b9c7c5] px-4 py-2 text-sm font-semibold">Back to dashboard</Link>
           </div>
@@ -50,7 +55,7 @@ export default async function AdminPage() {
 
         <div className="mt-10 grid gap-4 md:grid-cols-2">
           <AdminStat label="Pending approvals" value={String(totalPending)} icon={Clock3} tone="coral" />
-          <AdminStat label="Active members" value="2,480" icon={Users} tone="blue" />
+          <AdminStat label="Active Kosher Products" value={String(activeProductsCount)} icon={PackageCheck} tone="blue" />
         </div>
 
         <div className="mt-10 space-y-8">
@@ -98,7 +103,7 @@ function QueueSection({ title, items }: { title: string; items: QueueReviewItem[
           items.map((item) => (
             <div key={item.id} className="flex flex-col gap-4 rounded-2xl border border-[#edf0ed] bg-[#f9f9f7] p-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="font-semibold">{item.title}</p>
+                {item.type === 'PRODUCT' ? <Link href={`/kosher/${item.id}`} className="font-semibold hover:text-[#c96552]">{item.title}</Link> : <p className="font-semibold">{item.title}</p>}
                 <p className="mt-1 text-sm text-[#6b7d83]">{item.subtitle}</p>
                 <p className="mt-1 text-xs text-[#7e8e91]">Submitted by {item.meta}</p>
               </div>

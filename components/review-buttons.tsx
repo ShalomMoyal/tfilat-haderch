@@ -1,6 +1,7 @@
 'use client'
 
 import { useTransition } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { reviewContent } from '@/app/actions/admin'
 
@@ -9,10 +10,16 @@ type ReviewTarget = 'LOCATION' | 'PRODUCT'
 export function ReviewButtons({ target, id }: { target: ReviewTarget; id: string }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [error, setError] = useState('')
 
   const submit = (status: 'ACTIVE' | 'REJECTED') => {
     startTransition(async () => {
-      await reviewContent(target, id, status)
+      setError('')
+      const result = await reviewContent(target, id, status)
+      if ('error' in result) {
+        setError(result.error ?? 'The review could not be saved.')
+        return
+      }
       router.refresh()
     })
   }
@@ -35,6 +42,7 @@ export function ReviewButtons({ target, id }: { target: ReviewTarget; id: string
       >
         Reject
       </button>
+      {error && <p role="alert" className="text-xs text-[#a94f40]">{error}</p>}
     </div>
   )
 }

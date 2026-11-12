@@ -9,7 +9,7 @@ export default async function DashboardPage() {
   const session = await requireAuth()
   const now = new Date()
 
-  const [joined, created, joinedCount, activeCreatedCount] = await Promise.all([
+  const [joined, created, joinedCount, activeCreatedCount, products] = await Promise.all([
     prisma.minyanParticipant.findMany({
       where: { userId: session.user.id, minyan: { is: { status: 'ACTIVE', expiresAt: { gt: now } } } },
       include: { minyan: { include: { city: true, country: true, _count: { select: { participants: true } } } } },
@@ -26,6 +26,12 @@ export default async function DashboardPage() {
       where: { userId: session.user.id, minyan: { is: { status: 'ACTIVE', expiresAt: { gt: now } } } },
     }),
     prisma.minyan.count({ where: { createdById: session.user.id, status: 'ACTIVE', expiresAt: { gt: now } } }),
+    prisma.kosherProduct.findMany({
+      where: { createdById: session.user.id },
+      include: { country: true, city: true },
+      orderBy: { updatedAt: 'desc' },
+      take: 12,
+    }),
   ])
 
   return (
@@ -103,6 +109,36 @@ export default async function DashboardPage() {
             emptyLabel="Create your first minyan"
           />
         </div>
+
+        <section className="mt-14">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold">Kosher product information you submitted</h2>
+              <p className="mt-1 text-sm text-[#718489]">Your location-specific submissions and their review status.</p>
+            </div>
+            <Link href="/dashboard/kosher/new" className="rounded-full bg-[#183f52] px-4 py-2.5 text-sm font-semibold text-white">Add product info</Link>
+          </div>
+          {products.length ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {products.map((product: DashboardKosherProduct) => (
+                <Link key={product.id} href={`/kosher/${product.id}`} className="rounded-2xl border border-[#dfe5e0] bg-white p-5 transition hover:border-[#a9c3b7] hover:shadow-lg">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="font-semibold">{product.name}</h3>
+                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${productStatusClass[product.status]}`}>{product.status}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-[#718489]">{[product.brand, product.category].filter(Boolean).join(' · ') || 'Product information'}</p>
+                  <p className="mt-3 text-sm text-[#718489]">{[product.city?.name, product.country?.name].filter(Boolean).join(', ')}</p>
+                  <p className="mt-3 line-clamp-2 text-sm leading-5 text-[#526b72]">{product.kosherInfo}</p>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-[#cbd9d3] bg-white/60 p-6 text-sm text-[#718489]">
+              You have not submitted product information yet.
+              <Link href="/dashboard/kosher/new" className="mt-3 block font-semibold text-[#d57561]">Submit product information <ArrowRight className="ml-1 inline" size={14} /></Link>
+            </div>
+          )}
+        </section>
       </section>
     </main>
   )
@@ -131,6 +167,24 @@ type DashboardMinyanSummary = {
   country: { name: string } | null
   _count: { participants: number }
 }
+
+type DashboardKosherProduct = {
+  id: string
+  name: string
+  brand: string | null
+  category: string | null
+  kosherInfo: string
+  status: 'PENDING' | 'ACTIVE' | 'REJECTED' | 'INACTIVE'
+  city: { name: string } | null
+  country: { name: string } | null
+}
+
+const productStatusClass = {
+  PENDING: 'bg-[#f6edcf] text-[#8b6e25]',
+  ACTIVE: 'bg-[#e0eee5] text-[#467568]',
+  REJECTED: 'bg-[#f6e2dc] text-[#a94f40]',
+  INACTIVE: 'bg-[#e0ebef] text-[#356579]',
+} as const
 
 function List({ title, items, empty, emptyHref, emptyLabel }: { title: string; items: DashboardMinyanSummary[]; empty: string; emptyHref: string; emptyLabel: string }) {
   return (

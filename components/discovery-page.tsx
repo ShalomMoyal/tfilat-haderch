@@ -29,12 +29,6 @@ export const places: DiscoveryCard[] = [
   { title: 'Chabad Central Park', subtitle: 'Synagogue & Chabad', detail: 'New York, USA', tag: 'Both', tone: 'gold', rating: '4.7 · 56 community reviews' },
 ]
 
-export const kosher: DiscoveryCard[] = [
-  { title: 'Bamba Peanut Snack', subtitle: 'Osem · Snacks', detail: 'Jerusalem, Israel', tag: 'Kosher info', tone: 'gold' },
-  { title: 'Local dairy selection', subtitle: 'Supermercato · Dairy', detail: 'Rome, Italy', tag: 'Community note', tone: 'green' },
-  { title: 'Travel pantry essentials', subtitle: 'Products shared by travelers', detail: 'New York, USA', tag: 'Popular', tone: 'coral' },
-]
-
 export const trips: DiscoveryCard[] = [
   { title: 'A soulful weekend in Safed', subtitle: '3 days · Jewish heritage & nature', detail: 'Safed, Israel', tag: 'Guide trip', tone: 'green', rating: 'By Miriam Cohen' },
   { title: 'Florence with intention', subtitle: '5 days · Food, art & community', detail: 'Florence, Italy', tag: 'Guide trip', tone: 'coral', rating: 'By David Levi' },
