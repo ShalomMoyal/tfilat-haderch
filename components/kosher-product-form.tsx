@@ -15,7 +15,7 @@ type ProductValues = {
   countryId: string | null
   cityId: string | null
   description: string | null
-  kosherInfo: string
+  kosherInfo: string | null
   imageUrl: string | null
 }
 
@@ -106,7 +106,7 @@ export function KosherProductForm({
               </div>
 
               <Field label="Kosher information for this location">
-                <textarea required minLength={2} maxLength={1500} rows={4} name="kosherInfo" defaultValue={initial?.kosherInfo} className="control resize-y" placeholder="Certification, hechsher, or local packaging details" />
+                <textarea required minLength={2} maxLength={1500} rows={4} name="kosherInfo" defaultValue={initial?.kosherInfo ?? ''} className="control resize-y" placeholder="Certification, hechsher, or local packaging details" />
               </Field>
               <Field label="Product details (optional)">
                 <textarea maxLength={1500} rows={3} name="description" defaultValue={initial?.description ?? ''} className="control resize-y" placeholder="Useful identifying or availability details" />

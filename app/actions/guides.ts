@@ -2,8 +2,9 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { prisma } from '@/lib/prisma'
 import { requireAdmin, requireAuth, requireOwnerOrAdmin } from '@/lib/auth-helpers'
+import { canAccessGuidePrivateProfile, resolveGuideUserRole } from '@/lib/guide-role'
+import { prisma } from '@/lib/prisma'
 
 const optionalText = (max: number) =>
   z.preprocess(
@@ -76,13 +77,60 @@ function toObject(input: FormData | Record<string, unknown> | unknown) {
   return {}
 }
 
-export async function getMyGuideProfile(userId?: string) {
-  const targetUserId = userId ?? (await requireAuth()).user.id
+export async function getPrivateGuideProfile(id: unknown) {
+  const session = await requireAuth()
+  const parsedId = guideIdSchema.safeParse(id)
+  if (!parsedId.success) return null
+
+  const profile = await prisma.guideProfile.findUnique({
+    where: { id: parsedId.data },
+    select: {
+      id: true,
+      userId: true,
+      displayName: true,
+      bio: true,
+      phone: true,
+      email: true,
+      website: true,
+      languages: true,
+      imageUrl: true,
+      yearsExperience: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  })
+
+  if (!profile) return null
+  if (!canAccessGuidePrivateProfile({
+    currentUserId: session.user.id,
+    profileUserId: profile.userId,
+    currentRole: session.user.role,
+  })) {
+    return null
+  }
+
+  return profile
+}
+
+export async function getMyGuideProfile() {
+  const session = await requireAuth()
   return prisma.guideProfile.findUnique({
-    where: { userId: targetUserId },
-    include: {
-      user: { select: { id: true, name: true, email: true, image: true } },
-      trips: { orderBy: { createdAt: 'desc' }, take: 5 },
+    where: { userId: session.user.id },
+    select: {
+      id: true,
+      userId: true,
+      displayName: true,
+      bio: true,
+      phone: true,
+      email: true,
+      website: true,
+      languages: true,
+      imageUrl: true,
+      yearsExperience: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
     },
   })
 }
@@ -90,7 +138,7 @@ export async function getMyGuideProfile(userId?: string) {
 export async function getPublicGuideProfiles() {
   try {
     return (await prisma.guideProfile.findMany({
-      where: { status: 'ACTIVE' },
+      where: { status: 'ACTIVE', user: { isActive: true } },
       orderBy: [{ displayName: 'asc' }, { createdAt: 'desc' }],
       select: {
         id: true,
@@ -117,7 +165,11 @@ export async function getPublicGuideProfileById(id: unknown) {
 
   try {
     return await prisma.guideProfile.findFirst({
-      where: { id: parsedId.data, status: 'ACTIVE' },
+      where: {
+        id: parsedId.data,
+        status: 'ACTIVE',
+        user: { isActive: true },
+      },
       select: {
         id: true,
         displayName: true,
@@ -253,29 +305,41 @@ export async function setGuideProfileStatus(id: unknown, status: unknown) {
   if (!parsedId.success || !parsedStatus.success) return { error: 'Invalid guide moderation request.' }
 
   try {
-    const profile = await prisma.guideProfile.update({
-      where: { id: parsedId.data },
-      data: { status: parsedStatus.data },
-      select: { id: true, userId: true },
-    })
+    const result = await prisma.$transaction(async (tx) => {
+      const profile = await tx.guideProfile.findUnique({
+        where: { id: parsedId.data },
+        include: { user: { select: { id: true, role: true } } },
+      })
 
-    if (parsedStatus.data === 'ACTIVE') {
-      await prisma.user.update({
-        where: { id: profile.userId },
-        data: { role: 'GUIDE' },
+      if (!profile) {
+        throw new Error('Guide profile not found.')
+      }
+
+      if (profile.user.role === 'ADMIN') {
+        throw new Error('Admin profiles cannot be moderated as guides.')
+      }
+
+      const nextRole = resolveGuideUserRole(profile.user.role, parsedStatus.data)
+      const updatedProfile = await tx.guideProfile.update({
+        where: { id: parsedId.data },
+        data: { status: parsedStatus.data },
+        select: { id: true, userId: true, status: true },
       })
-    } else if (profile.userId) {
-      await prisma.user.update({
+
+      const updatedUser = await tx.user.update({
         where: { id: profile.userId },
-        data: { role: 'USER' },
+        data: { role: nextRole },
+        select: { id: true, role: true },
       })
-    }
+
+      return { profile: updatedProfile, user: updatedUser }
+    })
 
     revalidatePath('/guide')
     revalidatePath('/guides')
     revalidatePath('/dashboard')
     revalidatePath('/admin')
-    revalidatePath(`/guides/${profile.id}`)
+    revalidatePath(`/guides/${result.profile.id}`)
 
     return { success: true }
   } catch {
@@ -287,7 +351,11 @@ export async function deleteGuideProfile(id: unknown) {
   const parsedId = guideIdSchema.safeParse(id)
   if (!parsedId.success) return { error: 'This guide profile could not be found.' }
 
-  const current = await prisma.guideProfile.findUnique({ where: { id: parsedId.data }, select: { userId: true } })
+  const current = await prisma.guideProfile.findUnique({
+    where: { id: parsedId.data },
+    include: { user: { select: { id: true, role: true } } },
+  })
+
   if (!current) return { error: 'This guide profile could not be found.' }
 
   try {
@@ -296,9 +364,22 @@ export async function deleteGuideProfile(id: unknown) {
     return { error: 'You do not have permission to delete this guide profile.' }
   }
 
+  if (current.user.role === 'ADMIN') {
+    return { error: 'Admin profiles cannot be deleted through the guide workflow.' }
+  }
+
   try {
-    await prisma.guideProfile.delete({ where: { id: parsedId.data } })
-    await prisma.user.update({ where: { id: current.userId }, data: { role: 'USER' } })
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: current.userId },
+        data: { role: 'USER' },
+      })
+
+      await tx.guideProfile.delete({
+        where: { id: parsedId.data },
+      })
+    })
+
     revalidatePath('/guide')
     revalidatePath('/guides')
     revalidatePath('/dashboard')

@@ -10,6 +10,7 @@ const statusStyles = {
   ACTIVE: 'bg-[#e0eee5] text-[#467568]',
   REJECTED: 'bg-[#f6e2dc] text-[#a94f40]',
   INACTIVE: 'bg-[#e0ebef] text-[#356579]',
+  EXPIRED: 'bg-[#e0ebef] text-[#356579]',
 } as const
 
 export default async function KosherProductDetailsPage({ params }: { params: Promise<{ id: string }> }) {

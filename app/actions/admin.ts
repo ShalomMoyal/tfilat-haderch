@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireAdmin } from '@/lib/auth-helpers'
+import { resolveGuideUserRole } from '@/lib/guide-role'
 import { prisma } from '@/lib/prisma'
 
 const reviewTargetSchema = z.enum(['LOCATION', 'PRODUCT', 'GUIDE'])
@@ -35,17 +36,31 @@ export async function reviewContent(
       await prisma.kosherProduct.update({ where: { id: parsedId.data }, data: { status: parsedStatus.data } })
     }
     if (parsedTarget.data === 'GUIDE') {
-      const guide = await prisma.guideProfile.update({
+      const current = await prisma.guideProfile.findUnique({
         where: { id: parsedId.data },
-        data: { status: parsedStatus.data },
-        select: { userId: true },
+        include: { user: { select: { id: true, role: true } } },
       })
 
-      if (parsedStatus.data === 'ACTIVE') {
-        await prisma.user.update({ where: { id: guide.userId }, data: { role: 'GUIDE' } })
-      } else {
-        await prisma.user.update({ where: { id: guide.userId }, data: { role: 'USER' } })
+      if (!current) {
+        return { error: 'This guide profile could not be found.' }
       }
+
+      if (current.user.role === 'ADMIN') {
+        return { error: 'Admin profiles cannot be moderated through the guide review flow.' }
+      }
+
+      await prisma.$transaction(async (tx) => {
+        const updatedProfile = await tx.guideProfile.update({
+          where: { id: parsedId.data },
+          data: { status: parsedStatus.data },
+          select: { id: true, userId: true },
+        })
+
+        await tx.user.update({
+          where: { id: updatedProfile.userId },
+          data: { role: resolveGuideUserRole(current.user.role, parsedStatus.data) },
+        })
+      })
     }
 
     revalidatePath('/admin')

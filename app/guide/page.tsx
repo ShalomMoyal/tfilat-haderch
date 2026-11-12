@@ -21,6 +21,10 @@ export default async function GuidePage() {
     profile = null
   }
 
+  if (!profile || profile.status !== 'ACTIVE') {
+    redirect('/dashboard')
+  }
+
   return (
     <main className="min-h-screen bg-[#f7f7f2] px-5 py-10 text-[#183f52] md:px-10 md:py-16">
       <div className="mx-auto max-w-[1000px]">

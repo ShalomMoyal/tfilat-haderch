@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "seed": "node prisma/seed.js"
+    "seed": "node prisma/seed.js",
+    "test": "node --experimental-strip-types --test tests/**/*.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

@@ -4,7 +4,7 @@ import { DeleteKosherProductButton, KosherProductModeration } from '@/components
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 
-const statusOrder = { PENDING: 0, REJECTED: 1, INACTIVE: 2, ACTIVE: 3 } as const
+const statusOrder = { PENDING: 0, REJECTED: 1, INACTIVE: 2, EXPIRED: 3, ACTIVE: 4 } as const
 
 type AdminProduct = {
   id: string
@@ -88,6 +88,6 @@ function Count({ label, value, tone }: { label: string; value: number; tone: 'go
   return <div className="rounded-xl border border-[#dfe5e0] bg-white p-4"><p className="text-sm text-[#718489]">{label}</p><p className={`mt-3 inline-flex rounded-full px-3 py-1 text-lg font-semibold ${colors[tone]}`}>{value}</p></div>
 }
 
-const statusClass = { PENDING: 'bg-[#f6edcf] text-[#8b6e25]', ACTIVE: 'bg-[#e0eee5] text-[#467568]', REJECTED: 'bg-[#f6e2dc] text-[#a94f40]', INACTIVE: 'bg-[#e0ebef] text-[#356579]' } as const
+const statusClass = { PENDING: 'bg-[#f6edcf] text-[#8b6e25]', ACTIVE: 'bg-[#e0eee5] text-[#467568]', REJECTED: 'bg-[#f6e2dc] text-[#a94f40]', INACTIVE: 'bg-[#e0ebef] text-[#356579]', EXPIRED: 'bg-[#e0ebef] text-[#356579]' } as const
 
 export const dynamic = 'force-dynamic'

@@ -138,7 +138,7 @@ export default async function DashboardPage() {
                   </div>
                   <p className="mt-1 text-sm text-[#718489]">{[product.brand, product.category].filter(Boolean).join(' · ') || 'Product information'}</p>
                   <p className="mt-3 text-sm text-[#718489]">{[product.city?.name, product.country?.name].filter(Boolean).join(', ')}</p>
-                  <p className="mt-3 line-clamp-2 text-sm leading-5 text-[#526b72]">{product.kosherInfo}</p>
+                  <p className="mt-3 line-clamp-2 text-sm leading-5 text-[#526b72]">{product.kosherInfo ?? 'No location-specific kosher note is available.'}</p>
                 </Link>
               ))}
             </div>
@@ -183,8 +183,8 @@ type DashboardKosherProduct = {
   name: string
   brand: string | null
   category: string | null
-  kosherInfo: string
-  status: 'PENDING' | 'ACTIVE' | 'REJECTED' | 'INACTIVE'
+  kosherInfo: string | null
+  status: 'PENDING' | 'ACTIVE' | 'REJECTED' | 'INACTIVE' | 'EXPIRED'
   city: { name: string } | null
   country: { name: string } | null
 }
@@ -194,6 +194,7 @@ const productStatusClass = {
   ACTIVE: 'bg-[#e0eee5] text-[#467568]',
   REJECTED: 'bg-[#f6e2dc] text-[#a94f40]',
   INACTIVE: 'bg-[#e0ebef] text-[#356579]',
+  EXPIRED: 'bg-[#e0ebef] text-[#356579]',
 } as const
 
 function List({ title, items, empty, emptyHref, emptyLabel }: { title: string; items: DashboardMinyanSummary[]; empty: string; emptyHref: string; emptyLabel: string }) {

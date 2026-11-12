@@ -10,7 +10,7 @@ type QueueReviewItem = {
   title: string
   subtitle: string
   meta: string
-  type: 'LOCATION' | 'PRODUCT'
+  type: 'LOCATION' | 'PRODUCT' | 'GUIDE'
 }
 
 export default async function AdminPage() {

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { deleteKosherProduct, setKosherProductStatus } from '@/app/actions/kosher-products'
 
-type ProductStatus = 'PENDING' | 'ACTIVE' | 'REJECTED' | 'INACTIVE'
+type ProductStatus = 'PENDING' | 'ACTIVE' | 'REJECTED' | 'INACTIVE' | 'EXPIRED'
 
 export function KosherProductModeration({ id, status }: { id: string; status: ProductStatus }) {
   const router = useRouter()
@@ -36,7 +36,7 @@ export function KosherProductModeration({ id, status }: { id: string; status: Pr
           <button type="button" disabled={pending} onClick={() => update('REJECTED')} className="rounded-full border border-[#d9aaa0] px-3.5 py-2 text-xs font-semibold text-[#a94f40] disabled:opacity-60">Reject</button>
         </>}
         {status === 'ACTIVE' && <button type="button" disabled={pending} onClick={() => update('INACTIVE')} className="rounded-full border border-[#b9c7c5] px-3.5 py-2 text-xs font-semibold text-[#183f52] disabled:opacity-60">Deactivate</button>}
-        {(status === 'REJECTED' || status === 'INACTIVE') && <button type="button" disabled={pending} onClick={() => update('ACTIVE')} className="rounded-full bg-[#183f52] px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-60">Reactivate</button>}
+        {(status === 'REJECTED' || status === 'INACTIVE' || status === 'EXPIRED') && <button type="button" disabled={pending} onClick={() => update('ACTIVE')} className="rounded-full bg-[#183f52] px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-60">Reactivate</button>}
       </div>
       {error && <p role="alert" className="text-xs text-[#a94f40]">{error}</p>}
     </div>
